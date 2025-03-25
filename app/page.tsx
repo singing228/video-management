@@ -15,22 +15,26 @@ import {
   ChevronLeft,
   Wand2,
   Check,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useState, useEffect, useRef } from "react"
 import { NotificationBanner } from "@/components/notification-banner"
 import { GenerationSuccess } from "@/components/generation-success"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 export default function VideoManagement() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [successDialogOpen, setSuccessDialogOpen] = useState(false)
   const [processingDialogOpen, setProcessingDialogOpen] = useState(false)
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false)
   const [showNotification, setShowNotification] = useState(false)
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([])
+  // Change language selection from multi-select to single-select
+  // 1. Update the state to store a single string instead of an array
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("original")
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedText, setGeneratedText] = useState("")
   const [editableText, setEditableText] = useState("")
@@ -45,12 +49,15 @@ export default function VideoManagement() {
   const [hasChanges, setHasChanges] = useState(false)
   const [initialContent, setInitialContent] = useState("")
   const [separatorPosition, setSeparatorPosition] = useState<number | null>(null)
+  // Add a new state for the badge and timer
+  const [showBadge, setShowBadge] = useState(false)
+  const [chineseOptionEnabled, setChineseOptionEnabled] = useState(false)
 
   // Ref for the textarea to enable auto-scrolling
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Check if character count exceeds limit
-  const isCharacterLimitExceeded = editableText.length > 1000
+  const isCharacterLimitExceeded = editableText.length == 3000
 
   // Auto-hide notification after 5 seconds
   useEffect(() => {
@@ -114,21 +121,33 @@ export default function VideoManagement() {
     }
   }, [showGenerationSuccess])
 
+  // Add useEffect to enable Chinese option after 2 minutes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setChineseOptionEnabled(true)
+      setShowBadge(true)
+    }, 120000) // 2 minutes in milliseconds
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Update the languageOptions array to use the dynamic state for Chinese
   const languageOptions = [
     { id: "original", label: "影片原文 (自動產生)", disabled: false },
     { id: "english-trans", label: "英文 (自動翻譯)", disabled: false },
-    { id: "chinese", label: "中文", disabled: true },
+    { id: "chinese", label: "中文", disabled: !chineseOptionEnabled },
     { id: "english", label: "English", disabled: true },
   ]
 
-  const handleLanguageChange = (checked: boolean, id: string) => {
-    setSelectedLanguages((prev) => (checked ? [...prev, id] : prev.filter((lang) => lang !== id)))
+  // 2. Replace the handleLanguageChange function
+  const handleLanguageChange = (value: string) => {
+    setSelectedLanguage(value)
   }
 
   // Modify the handleTextChange function to limit text to 1000 characters
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // Limit text to 1000 characters
-    const text = e.target.value.slice(0, 1000)
+    // Limit text to 3000 characters
+    const text = e.target.value.slice(0, 3000)
     setEditableText(text)
     if (text !== "") {
       setShowPlaceholder(false)
@@ -187,12 +206,12 @@ export default function VideoManagement() {
     return text.split("\n").length
   }
 
-  // Modify the simulateGeneration function to add content with a slight delay
+  // 3. Update the simulateGeneration function to use the single selected language
   const simulateGeneration = async () => {
-    const isEnglishTranslation = selectedLanguages.includes("english-trans")
-    const isEnglish = selectedLanguages.includes("english")
-    const isChinese = selectedLanguages.includes("chinese")
-    const isOriginal = selectedLanguages.includes("original")
+    const isEnglishTranslation = selectedLanguage === "english-trans"
+    const isEnglish = selectedLanguage === "english"
+    const isChinese = selectedLanguage === "chinese"
+    const isOriginal = selectedLanguage === "original"
 
     // Set the current generating language for display
     if (isEnglish) {
@@ -207,16 +226,11 @@ export default function VideoManagement() {
       setCurrentGeneratingLanguage("影片原文 (自動產生)") // Default to original if no language selected
     }
 
-    // Show processing dialog only for Chinese
+    // Show error dialog for Chinese option
     if (isChinese) {
       setDialogOpen(false)
-      setProcessingDialogOpen(true)
-
-      // Simulate backend processing and show success message after 3 seconds
-      setTimeout(() => {
-        setProcessingDialogOpen(false)
-        setShowGenerationSuccess(true)
-      }, 3000)
+      // Show error dialog instead of processing dialog
+      setErrorDialogOpen(true)
       return
     }
 
@@ -258,48 +272,87 @@ Bloating: Causing loss of appetite and repeated vomiting.
 Endoscopy: Used to observe ulcer location and treatment.
 Imaging: Such as ultrasound and CT scans for auxiliary diagnosis.`
     } else if (isEnglishTranslation) {
-      newContent = `Peptic Ulcer Disease: Comprehensive Analysis
+      newContent = `💫 Summary
 
-1. Definition
-Peptic ulcer refers to breaks in the digestive tract mucosa, including gastric, duodenal, and esophageal ulcers.
+This video teaches you how to use Power BI to transform large datasets into interactive charts. It covers everything from data import and formatting to cross-table calculations, and demonstrates the use of visualization design and filtering features.
 
-2. Symptoms
-Pain: Typically in the upper abdomen, may worsen on empty stomach or during hunger in duodenal ulcer patients.
-Nausea and vomiting: Common accompanying symptoms.
-Signs of bleeding: Such as black stools.
-Perforation complications: Leading to severe peritonitis.
-Bloating: Causing loss of appetite and repeated vomiting.
+✨ Highlights
 
-3. Diagnostic Methods
-Endoscopy: Used to observe ulcer location and treatment.
-Imaging: Such as ultrasound and CT scans for auxiliary diagnosis.
+The video introduces how to perform data analysis using Power BI, especially how to import data from Excel and prepare it for visualization.
 
-4. Formation Mechanism
-Erosive factors:`
+Introduces the Power BI software and explains its function of transforming large datasets into visually appealing interactive charts to help users understand the data context.
+Guides viewers through downloading and installing Power BI, and shows how to get started with data analysis.
+Uses Excel as an example to explain how to check and format the Excel sheet before importing to ensure data cleanliness.
+Explains how Power BI automatically converts each Excel worksheet into a separate table and offers suggestions for handling multiple data segments.
+Demonstrates how to select and import the created Excel tables into Power BI and verify the available data list.
+How to split data and create relationships in Power BI, and how to perform cross-table calculations to analyze sales data:
+
+Introduces the use of slashes as delimiters to split data.
+Power BI’s interface is similar to Office and provides various features to create charts and connect to databases.
+Shows how to view relationships between tables and perform interactive queries and calculations.
+Provides an example of a cross-table calculation to compute total sales.
+How to set chart backgrounds, create bar charts, and use filter tools in Power BI to analyze data:
+
+Demonstrates how to open the formatting panel in Power BI and set the page background color, including adjusting transparency and using images as backgrounds.
+Details the steps to create a bar chart, including selecting the chart type and dragging data to the appropriate fields.
+Explains how to customize visual elements in charts, such as adjusting colors and toggling data labels.
+Covers how to use filter tools to analyze data for specific stores and set filtering conditions.
+How to create and work with data tables in Power BI, including how to add a month column and calculate employee performance achievement rates:
+
+Begins with switching to the “Table” view and opening the “Sales” table to create a Chinese month column.
+Notes that incorrect sorting occurs due to text data types and introduces a solution.
+Uses a horizontal bar chart to display employee performance achievement, calculating the ratio of actual to target performance.
+Returns to the chart page to add a “Grouped Bar Chart” and sets the summary type to “Sum.”
+How to create a dashboard in Power BI and use different visualization tools to present sales data and other key metrics:
+
+Drags the store’s city/county location to the “Location” field and total sales to the “Size” field, so each store’s sales appear as circles sized by volume.
+Creates text cards on the dashboard to highlight key figures, such as “Total Sales.”
+Allows turning off units via formatting options and duplicating text cards to display other key data like the number of sales points.
+Adds the company logo to the top-left corner of the dashboard and adjusts the background color to enhance visual impact.
+The “View” tab includes a variety of color themes to help users customize the dashboard’s appearance.
+`
     } else {
-      newContent = `消化性潰瘍: 全面分析
-1. 定義
-消化性潰瘍是指影響消化道黏膜的裂開，包括胃潰瘍、十二指腸潰瘍和食道潰瘍等。
+      newContent = `
+      💫 總結
 
-2. 症狀
-疼痛：通常位於上腹，可能在空腹狀態下加劇，或在十二指腸潰瘍患者的飢餓時刻更為明顯。
-嘔吐與噁心：常見伴隨症狀。
-出血跡象：如黑色便秘。
-穿孔併發症：導致嚴重腹膜炎。
-飽脹：引發食慾缺乏和反覆嘔吐。
+      這部影片教你如何使用 Power BI 將大量數據轉換成互動式圖表，從資料導入、格式化到跨表計算，並展示了視覺化設計與篩選功能的應用。
 
-3. 診斷方法
-內視鏡檢查：用於觀察潰瘍位置和處理。
-影像學檢查：如超聲和 CT 掃描輔助診斷。
+      ✨ 亮點
 
-4. 形成機制
-侵蝕因素：`
+      這段影片介紹了如何使用 Power BI 進行數據分析，特別是如何從 Excel 匯入數據並準備進行可視化。- 簡介 Power BI 軟體，說明其功能是將大量數據轉換成美觀的互動圖表，幫助使用者理解數據的背景。
+- 指導觀眾如何下載並安裝 Power BI，並介紹如何開始使用該軟體進行數據分析。
+- 以 Excel 為例，說明在導入數據前需要對 Excel 表格進行簡單的格式檢查，以確保數據的整齊性。
+- 解釋 Power BI 如何自動將 Excel 的每個工作表轉換為獨立的表格，並提供如何處理多個數據片段的建議。
+- 展示如何在 Power BI 中選擇剛剛創建的 Excel 表格進行數據匯入，並確認可用的數據列表。
+          
+如何在Power BI中進行數據拆分和建立數據關聯，並展示了如何進行交叉表計算以分析銷售數據。- 介紹如何使用斜線作為分隔符來拆分數據。
+- Power BI的操作介面類似於Office，並提供多種功能來創建圖表和連接數據庫。
+- 展示如何查看數據表之間的關係，並進行互動查詢和計算。
+- 進行交叉表計算的示例，計算銷售的總金額。
+          
+如何在 Power BI 中設置圖表的背景、創建條形圖以及使用過濾工具來分析數據。- 介紹如何在 Power BI 中打開格式面板並設置頁面背景顏色，包括透明度和使用圖片作為背景。
+- 詳細說明了創建條形圖的步驟，包括選擇圖表類型和拖放數據到相應的字段中。
+- 介紹如何自定義圖表中的視覺元素，如顏色和數據標籤的顯示與隱藏。
+- 講解了如何使用過濾工具來分析特定商店的數據，以及設置數據篩選條件。
+          
+如何在 Power BI 中創建和處理數據表，包括如何添加月份列和計算員工的績效達成率。- 開始於切換到 '表格' 視圖，並打開 '銷售' 數據表以創建中文月份列。
+- 提到由於數據類型為文本，導致月份排序錯誤，並介紹了解決方案。
+- 使用 '橫條圖' 來展示員工績效達成率，並計算實際績效與目標績效的比率。
+- 回到圖表頁面，添加 '群組條形圖'，並設置總結類型為 '總和'。
+          
+如何在 Power BI 中創建儀表板，並使用不同的視覺化工具來展示銷售數據和其他重要指標。- 將商店所在地的「縣市」拖到位置欄，並將總銷售額拖到「大小」欄，這樣每個商店的銷售額將以圓圈的大小呈現。
+- 在儀表板中創建一些文字卡片來標示重要數據，包括「總銷售額」等指標。
+- 可以通過格式選項關閉單位顯示，並複製文字卡片以替換為其他重要數據，如銷售點數量。
+- 添加公司標誌到儀表板的左上角，並調整背景顏色以增強視覺效果。
+- 在「檢視」選項卡中可以找到許多顏色主題，方便用戶自定義儀表板的外觀。
+          
+      `
     }
 
     // Check if adding the new content would exceed the character limit
-    if ((startContent + newContent).length > 1000) {
-      // Truncate the new content to fit within the 1000 character limit
-      const availableSpace = 1000 - startContent.length
+    if ((startContent + newContent).length > 3000) {
+      // Truncate the new content to fit within the 3000 character limit
+      const availableSpace = 3000 - startContent.length
       newContent = newContent.substring(0, availableSpace)
     }
 
@@ -356,15 +409,19 @@ Erosive factors:`
               <h2 className="text-lg font-medium">影片摘要</h2>
             </div>
 
+            {/* Modify the AI generate summary button to include the badge */}
             <div className="flex items-center mb-4">
-              <Button
-                className="flex items-center gap-2 bg-[#0099CC] hover:bg-[#0099CC]/90 text-white"
-                onClick={() => !isGenerating && setDialogOpen(true)}
-                disabled={isGenerating}
-              >
-                <Wand2 className="h-4 w-4" />
-                <span>AI 生成摘要</span>
-              </Button>
+              <div className="relative">
+                <Button
+                  className="flex items-center gap-2 bg-[#0099CC] hover:bg-[#0099CC]/90 text-white"
+                  onClick={() => !isGenerating && setDialogOpen(true)}
+                  disabled={isGenerating}
+                >
+                  <Wand2 className="h-4 w-4" />
+                  <span>AI 生成摘要</span>
+                </Button>
+                {showBadge && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>}
+              </div>
               <Popover>
                 <PopoverTrigger>
                   <div className="ml-2 text-[#0099CC] cursor-pointer">
@@ -395,7 +452,9 @@ Erosive factors:`
 
             {/* Text editor */}
             <div
-              className={`border rounded-md h-[428px] flex flex-col ${isGenerating ? "opacity-70 pointer-events-none" : ""}`}
+              className={`border rounded-md h-[428px] flex flex-col ${
+                isGenerating ? "opacity-70 pointer-events-none" : ""
+              } ${isCharacterLimitExceeded ? "border-red-500" : ""}`}
             >
               {/* Toolbar */}
               <div className="flex border-b">
@@ -450,8 +509,8 @@ Erosive factors:`
 
               {/* Character count and publish status */}
               <div className="p-2 text-sm border-t flex justify-end items-center gap-3">
-                <span className={editableText.length >= 1000 ? "text-red-500" : "text-gray-500"}>
-                  {editableText.length || generatedText.length} / 1000
+                <span className={editableText.length >= 3000 ? "text-red-500" : "text-gray-500"}>
+                  {editableText.length || generatedText.length} / 3000
                 </span>
                 {isPublished ? (
                   <div className="flex items-center gap-1 text-green-600">
@@ -560,19 +619,17 @@ Erosive factors:`
               <DialogHeader>
                 <DialogTitle>AI 生成摘要 (系統將根據您選擇的字幕生成內容)</DialogTitle>
               </DialogHeader>
+              {/* 4. Replace the checkboxes with radio buttons in the dialog */}
               <div className="py-4">
-                <div className="space-y-4">
+                <RadioGroup value={selectedLanguage} onValueChange={handleLanguageChange} className="space-y-4">
                   {languageOptions.map((option) => (
                     <div
                       key={option.id}
                       className="flex items-center space-x-2 border-b border-gray-100 pb-4 last:border-0"
                     >
-                      <Checkbox
+                      <RadioGroupItem
+                        value={option.id}
                         id={option.id}
-                        checked={selectedLanguages.includes(option.id)}
-                        onCheckedChange={(checked) =>
-                          !option.disabled && handleLanguageChange(checked as boolean, option.id)
-                        }
                         disabled={option.disabled}
                         className={option.disabled ? "opacity-50 cursor-not-allowed" : ""}
                       />
@@ -581,7 +638,7 @@ Erosive factors:`
                       </Label>
                     </div>
                   ))}
-                </div>
+                </RadioGroup>
               </div>
               <DialogFooter className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
@@ -615,6 +672,30 @@ Erosive factors:`
                   type="button"
                   className="bg-[#0099CC] hover:bg-[#0099CC]/90 text-white w-full sm:w-auto"
                   onClick={() => setSuccessDialogOpen(false)}
+                >
+                  確定
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Error Dialog for Chinese generation */}
+          <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>影片摘要生成結果</DialogTitle>
+              </DialogHeader>
+              <div className="py-6 flex items-start gap-4">
+                <div className="rounded-full bg-red-100 p-2 flex-shrink-0">
+                  <X className="h-6 w-6 text-red-600" />
+                </div>
+                <p>影片摘要生成失敗，請重新操作或聯繫 NTU COOL 客服團隊協助。</p>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  className="bg-[#0099CC] hover:bg-[#0099CC]/90 text-white w-full sm:w-auto"
+                  onClick={() => setErrorDialogOpen(false)}
                 >
                   確定
                 </Button>
